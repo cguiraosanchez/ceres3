@@ -1,0 +1,257 @@
+[root@DESKTOP-727VSBD instruments]# python3 fideospipe.py /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20 
+
+        FIDEOS ESO1.0m  PIPELINE
+
+        RAW data is in  /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/
+        Products of reduction will be in /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20_red/
+
+
+        No previous pre-processing files or found, or pre-process forced...
+
+                RON: 11.4 e
+                -> Masterbias: done!
+                -> Masterflats: done!
+                -> Tracing orders...
+/usr/local/lib64/python3.12/site-packages/ceres3/utils/globalutils.py:525: RuntimeWarning: Number of calls to function has reached maxfev = 1000.
+  p, success =  scipy.optimize.leastsq(errfunc, [y.min(),y.max()-y.min(),x.mean(),dev], args=(y,x))
+                -> Comparison orders found: 50
+                -> Object orders found: 49
+
+         Extracting Flats...
+        Extracted flat comparison spectra found, loading...
+
+/mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_22_30.431132-ThAr_60s_2F.fits
+No previous extraction or extraction forced for ThAr file /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_22_30.431132-ThAr_60s_2F.fits extracting...
+/mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_23_45.793797-ThAr_60s_2F.fits
+No previous extraction or extraction forced for ThAr file /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_23_45.793797-ThAr_60s_2F.fits extracting...
+        Selection of echelle orders...
+        Using image: /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_22_30.431132-ThAr_60s_2F.fits
+                Computing CCF...
+                Will start on order 10 for object fibre...
+                Offset for object fibre is  41.0 pixels
+        Using image: /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_22_30.431132-ThAr_60s_2F.fits
+                Will start on order 11 for comparison fibre...
+                Offset for comparison fibre is  41.5 pixels
+ntot 39 39
+10 48
+-1 48
+Working on initial ThAr file /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_22_30.431132-ThAr_60s_2F.fits
+/mnt/c/Users/carlo/Downloads/ceres3/instruments/fideospipe.py:612: RuntimeWarning: divide by zero encountered in divide
+  thar_order_orig = lines_thar_ob[order,:]/scipy.signal.medfilt(S_flat_ob[0].data[order,1],31)
+                        Start Global culling with  688  number of lines
+                        Final RMS is  84.89416140940799
+                        Number of lines is  684
+                        --> Achievable RV precision is  3.2460093901775426
+/usr/local/lib64/python3.12/site-packages/ceres3/instruments/fideosutils.py:662: RuntimeWarning: invalid value encountered in divide
+  out /= np.max(out)
+                        Start Global culling with  679  number of lines
+                        Final RMS is  105.16656692150401
+                        Number of lines is  677
+                        --> Achievable RV precision is  4.041879507458646
+Working on initial ThAr file /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_23_45.793797-ThAr_60s_2F.fits
+                        Start Global culling with  686  number of lines
+                        Final RMS is  83.15310022645103
+                        Number of lines is  681
+                        --> Achievable RV precision is  3.186433724168321
+                        Start Global culling with  679  number of lines
+                        Final RMS is  105.75058307006668
+                        Number of lines is  678
+                        --> Achievable RV precision is  4.061326675518589
+
+Computing instrumental drifts for ThAr + ThAr images...
+                        Start Global culling with  679  number of lines
+                        Final RMS is  105.16656690933381
+                        Number of lines is  677
+                        --> Achievable RV precision is  4.041879506990908
+                        Velocity of ThAr w/r to solution provided is  [-0.04012149]
+                        Start Global culling with  688  number of lines
+                        Final RMS is  83.54778617543649
+                        Number of lines is  682
+                        --> Achievable RV precision is  3.1992100781855983
+                        Velocity of ThAr w/r to solution provided is  [-1.06962777]
+
+
+                        Start Global culling with  679  number of lines
+                        Final RMS is  103.27009112405797
+                        Number of lines is  675
+                        --> Achievable RV precision is  3.9748676606474698
+                        Velocity of ThAr w/r to solution provided is  [5.52548499]
+                        Start Global culling with  686  number of lines
+                        Final RMS is  84.27695281747398
+                        Number of lines is  679
+                        --> Achievable RV precision is  3.2342526107617275
+                        Velocity of ThAr w/r to solution provided is  [8.5461758]
+
+
+0.9955922610443555 10000000.0
+
+Computing instrumental drifts for ThAr + ThAr images...
+                        Start Global culling with  679  number of lines
+                        Final RMS is  105.77983625336142
+                        Number of lines is  677
+                        --> Achievable RV precision is  4.065449362570846
+                        Velocity of ThAr w/r to solution provided is  [-5.07926617]
+                        Start Global culling with  688  number of lines
+                        Final RMS is  84.59766291757406
+                        Number of lines is  680
+                        --> Achievable RV precision is  3.2441722798045394
+                        Velocity of ThAr w/r to solution provided is  [-8.94769588]
+
+
+                        Start Global culling with  679  number of lines
+                        Final RMS is  105.75058307006668
+                        Number of lines is  678
+                        --> Achievable RV precision is  4.061326675518589
+                        Velocity of ThAr w/r to solution provided is  [0.]
+                        Start Global culling with  686  number of lines
+                        Final RMS is  80.95461017560767
+                        Number of lines is  678
+                        --> Achievable RV precision is  3.1090430734983623
+                        Velocity of ThAr w/r to solution provided is  [-0.85101321]
+
+
+0.682064601349879 0.9955922610443555
+Reference wavelength image will be: /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_23_45.793797-ThAr_60s_2F.fits
+Mean diference between science and comparison fiber is 0.682064601349879 m/s
+ Unpickling wavelength solution from /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20_red/2022-12-19T23_23_45.793797-ThAr_60s_2F.wavsolpars.pkl  ...
+
+Computing instrumental drifts for ThAr + Dark imeges...
+Reference wavelength image will be: /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-19T23_23_45.793797-ThAr_60s_2F.fits
+ Unpickling wavelength solution from /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20_red/2022-12-19T23_23_45.793797-ThAr_60s_2F.wavsolpars.pkl  ...
+HAAAA
+[]
+['/mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_25_25.461507-HD72673.fits'
+ '/mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_25_25.999999-HD72673.fits'
+ '/mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_30_37.831681-HD72673.fits'
+ '/mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_38_28.144783-HD72673.fits']
+
+        The following targets will be processed:
+                HD72673 /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_25_25.461507-HD72673.fits
+                HD72673 /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_25_25.999999-HD72673.fits
+                HD72673 /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_30_37.831681-HD72673.fits
+                HD72673 /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_38_28.144783-HD72673.fits
+
+
+        --> Working on image:  /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_25_25.461507-HD72673.fits
+['HD  72673 ', ' HighPM*,MidIR,NearIR,Star,Star,Infrared ', ' K1V ', ' 08 32 51.4956803280 ', ' -31 30 03.064960317 ', ' -1113.739  ', ' 762.420 ']
+ra= 128.20745499037324
+                Warning! Problem with reference coordinates files.
+ra2= 0.0
+                Using the coordinates found in the image header.
+                Barycentric velocity: 16.217312351150998
+                Radial Velocity of scattered moonlight: 36.54246166266208
+No previous extraction or extraction forced for science file /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_25_25.461507-HD72673.fits extracting...
+                        Start Global culling with  679  number of lines
+                        Final RMS is  104.00308811507269
+                        Number of lines is  675
+                        --> Achievable RV precision is  4.003080727985972
+                        Start Global culling with  679  number of lines
+                        Final RMS is  104.9423545880418
+                        Number of lines is  675
+                        --> Achievable RV precision is  4.039233111386606
+                        Velocity of ThAr w/r to solution provided is  [-38.57031717]
+/mnt/c/Users/carlo/Downloads/ceres3/instruments/fideospipe.py:1573: RuntimeWarning: invalid value encountered in divide
+  ratio            = spec[3,out_order,:][L] / spec[5,out_order,:][L]
+                Radial Velocity analysis:
+                Warning! Problem with reference mask file. Forcing to G2 mask
+                        Will use G2 mask for CCF.
+                Warning! There is no predefined dispersion of the CCF.
+                        Computing the CCF...
+                        RV = 14.7703 +- 0.0065
+                        BS = -0.0259 +- 0.0057
+
+
+        --> Working on image:  /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_25_25.999999-HD72673.fits
+['HD  72673 ', ' HighPM*,MidIR,NearIR,Star,Star,Infrared ', ' K1V ', ' 08 32 51.4956803280 ', ' -31 30 03.064960317 ', ' -1113.739  ', ' 762.420 ']
+ra= 128.20745499037324
+                Warning! Problem with reference coordinates files.
+ra2= 0.0
+                Using the coordinates found in the image header.
+                Barycentric velocity: 16.217312351150998
+                Radial Velocity of scattered moonlight: 36.54246166266208
+No previous extraction or extraction forced for science file /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_25_25.999999-HD72673.fits extracting...
+/usr/local/lib64/python3.12/site-packages/ceres3/instruments/fideosutils.py:662: RuntimeWarning: invalid value encountered in divide
+  out /= np.max(out)
+                        Start Global culling with  679  number of lines
+                        Final RMS is  105.28708742469642
+                        Number of lines is  677
+                        --> Achievable RV precision is  4.046511486673539
+                        Start Global culling with  679  number of lines
+                        Final RMS is  105.77983625336142
+                        Number of lines is  677
+                        --> Achievable RV precision is  4.065449362570846
+                        Velocity of ThAr w/r to solution provided is  [-5.07926617]
+/mnt/c/Users/carlo/Downloads/ceres3/instruments/fideospipe.py:1581: RuntimeWarning: divide by zero encountered in divide
+  rI = np.where(spec[5,out_order] > 1. + 8./spec[8,out_order])
+/mnt/c/Users/carlo/Downloads/ceres3/instruments/fideospipe.py:1573: RuntimeWarning: invalid value encountered in divide
+  ratio            = spec[3,out_order,:][L] / spec[5,out_order,:][L]
+                Radial Velocity analysis:
+                Warning! Problem with reference mask file. Forcing to G2 mask
+                        Will use G2 mask for CCF.
+                Warning! There is no predefined dispersion of the CCF.
+                        Computing the CCF...
+                        RV = 99.271 +- 0.5261
+                        BS = -999.0 +- 0.0506
+
+
+        --> Working on image:  /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_30_37.831681-HD72673.fits
+['HD  72673 ', ' HighPM*,MidIR,NearIR,Star,Star,Infrared ', ' K1V ', ' 08 32 51.4956803280 ', ' -31 30 03.064960317 ', ' -1113.739  ', ' 762.420 ']
+ra= 128.20745498730886
+                Warning! Problem with reference coordinates files.
+ra2= 0.0
+                Using the coordinates found in the image header.
+                Barycentric velocity: 16.209043145728298
+                Radial Velocity of scattered moonlight: 36.514559503276004
+No previous extraction or extraction forced for science file /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_30_37.831681-HD72673.fits extracting...
+/usr/local/lib64/python3.12/site-packages/ceres3/instruments/fideosutils.py:662: RuntimeWarning: invalid value encountered in divide
+  out /= np.max(out)
+                        Start Global culling with  679  number of lines
+                        Final RMS is  103.7221928257082
+                        Number of lines is  678
+                        --> Achievable RV precision is  3.983426817488335
+                        Start Global culling with  679  number of lines
+                        Final RMS is  106.44750456161793
+                        Number of lines is  678
+                        --> Achievable RV precision is  4.088091784156372
+                        Velocity of ThAr w/r to solution provided is  [-33.28883819]
+/mnt/c/Users/carlo/Downloads/ceres3/instruments/fideospipe.py:1573: RuntimeWarning: invalid value encountered in divide
+  ratio            = spec[3,out_order,:][L] / spec[5,out_order,:][L]
+                Radial Velocity analysis:
+                Warning! Problem with reference mask file. Forcing to G2 mask
+                        Will use G2 mask for CCF.
+                Warning! There is no predefined dispersion of the CCF.
+                        Computing the CCF...
+                        RV = 14.7802 +- 0.0066
+                        BS = -0.0111 +- 0.0059
+
+
+        --> Working on image:  /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_38_28.144783-HD72673.fits
+['HD  72673 ', ' HighPM*,MidIR,NearIR,Star,Star,Infrared ', ' K1V ', ' 08 32 51.4956803280 ', ' -31 30 03.064960317 ', ' -1113.739  ', ' 762.420 ']
+ra= 128.20745498269503
+                Warning! Problem with reference coordinates files.
+ra2= 0.0
+                Using the coordinates found in the image header.
+                Barycentric velocity: 16.19669867934479
+                Radial Velocity of scattered moonlight: 36.47257707265376
+No previous extraction or extraction forced for science file /mnt/c/Users/carlo/Downloads/OneDrive_1_30-06-2026/2022-12-20/2022-12-20T08_38_28.144783-HD72673.fits extracting...
+/usr/local/lib64/python3.12/site-packages/ceres3/instruments/fideosutils.py:662: RuntimeWarning: invalid value encountered in divide
+  out /= np.max(out)
+                        Start Global culling with  681  number of lines
+                        Final RMS is  105.89299968593153
+                        Number of lines is  678
+                        --> Achievable RV precision is  4.066796152700249
+                        Start Global culling with  681  number of lines
+                        Final RMS is  105.678159073251
+                        Number of lines is  676
+                        --> Achievable RV precision is  4.0645445797404225
+                        Velocity of ThAr w/r to solution provided is  [-22.49760437]
+/mnt/c/Users/carlo/Downloads/ceres3/instruments/fideospipe.py:1573: RuntimeWarning: invalid value encountered in divide
+  ratio            = spec[3,out_order,:][L] / spec[5,out_order,:][L]
+                Radial Velocity analysis:
+                Warning! Problem with reference mask file. Forcing to G2 mask
+                        Will use G2 mask for CCF.
+                Warning! There is no predefined dispersion of the CCF.
+                        Computing the CCF...
+                        RV = 14.7708 +- 0.0065
+                        BS = -0.0206 +- 0.0057
+[root@DESKTOP-727VSBD instruments]#

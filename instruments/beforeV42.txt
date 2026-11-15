@@ -1,0 +1,94 @@
+python3 whapospipeV41.py ../../OneDrive_1_30-06-2026/2026-08-18
+['/mnt/c/Users/carlo/Downloads/ceres3/instruments', '/usr/lib64/python312.zip', '/usr/lib64/python3.12', '/usr/lib64/python3.12/lib-dynload', '/usr/local/lib64/python3.12/site-packages', '/usr/local/lib/python3.12/site-packages', '/usr/lib64/python3.12/site-packages', '/usr/lib/python3.12/site-packages']
+
+
+        WHAPOS Baader-Planetarium PIPELINE
+
+        RAW data is in  ../../OneDrive_1_30-06-2026/2026-08-18/
+        Products of reduction will be in ../../OneDrive_1_30-06-2026/2026-08-18_red/
+
+
+        found biases: 3
+        found darks: 9
+        found flats: 3
+        found flats_co: 0
+        found thars: 1
+        found thars_co: 0
+
+
+        No previous pre-processing files or found, or pre-process forced...
+
+                RON: 1.5 e
+                GAIN: 1
+                -> Masterbias: done!
+                -> Masterflats: done!
+                -> Tracing orders...
+                -> Orders found in flat: 52
+                -> Good orders found: 51
+        Extracted flat comparison spectra found, loading...
+
+        thars:  ../../OneDrive_1_30-06-2026/2026-08-18/ThAr.fits
+        Selection of echelle orders...
+                Values loaded from file...
+                Will start on order 2 for comparison fibre...
+                Offset for comparison fibre is  -1.0 pixels
+        Working on initial ThAr file ../../OneDrive_1_30-06-2026/2026-08-18/ThAr.fits
+/usr/local/lib64/python3.12/site-packages/ceres3/instruments/whaposutils.py:700: RuntimeWarning: invalid value encountered in divide
+  out /= np.max(out)
+                        Start Global culling with  1219  number of lines
+                        Final RMS is  311.5825501532604
+                        Number of lines is  1179
+                        --> Achievable RV precision is  9.07436460178983
+here, ref_pix: 4978.292509182046
+Reference wavelength image will be: ../../OneDrive_1_30-06-2026/2026-08-18/ThAr.fits
+ Unpickling wavelength solution from ../../OneDrive_1_30-06-2026/2026-08-18_red/ThAr.wavsolpars.pkl  ...
+
+Computing instrumental drifts for ThAr + Dark images...
+Reference wavelength image will be: ../../OneDrive_1_30-06-2026/2026-08-18/ThAr.fits
+ Unpickling wavelength solution from ../../OneDrive_1_30-06-2026/2026-08-18_red/ThAr.wavsolpars.pkl  ...
+[]
+['../../OneDrive_1_30-06-2026/2026-08-18/HD72673_1.fits']
+
+        The following targets will be processed:
+                HD72673 ../../OneDrive_1_30-06-2026/2026-08-18/HD72673_1.fits
+
+
+        --> Working on image:  ../../OneDrive_1_30-06-2026/2026-08-18/HD72673_1.fits
+obname: HD72673
+['HD  72673 ', ' HighPM*,MidIR,NearIR,Star,Star,Infrared ', ' K1V ', ' 08 32 51.4956803280 ', ' -31 30 03.064960317 ', ' -1113.739  ', ' 762.420 ']
+                Warning! Problem with reference coordinates files.
+                Using the coordinates found in SIMBAD.
+ra: 128.20632213682003 dec: -31.49520842298353
+                Barycentric velocity: 0.9364583731545301
+                Radial Velocity of scattered moonlight: -25.713679237640946
+No previous extraction or extraction forced for SCIENCE file ../../OneDrive_1_30-06-2026/2026-08-18/HD72673_1.fits extracting...
+../../OneDrive_1_30-06-2026/2026-08-18/HD72673_1.fits Reusing the thar calibration files...
+Reusing the thar calibration files...
+/usr/local/lib64/python3.12/site-packages/ceres3/instruments/whaposutils.py:700: RuntimeWarning: invalid value encountered in divide
+  out /= np.max(out)
+                        Start Global culling with  1219  number of lines
+                        Final RMS is  311.5825501532604
+                        Number of lines is  1179
+                        --> Achievable RV precision is  9.07436460178983
+AAAAAA
+                        Start Global culling with  1219  number of lines
+                        Final RMS is  119.65042158930888
+                        Number of lines is  793
+                        --> Achievable RV precision is  4.248911052021934
+                        Velocity of ThAr w/r to solution provided is  [-0.4901804]
+BBBBBB
+len(residuals): 793
+rms_ms: 119.65042158930888
+werr_co: 4.248911052021934
+rv_drift_co: [-0.4901804]
+mat_co: [ 6.12699043e+04 -4.90180396e-01  4.24891105e+00  3.00000000e+01
+  1.00000000e+00]
+shift_pix: [4978.29250104]
+                Radial Velocity analysis:
+                Warning! Problem with reference mask file. Forcing to G2 mask
+                        Will use G2 mask for CCF.
+                Warning! There is no predefined dispersion of the CCF.
+                        Computing the CCF...
+                        RV = 3.4617 +- 0.0057
+                        BS = 0.0024 +- 0.003
+        spectrum_1d_path: ../../OneDrive_1_30-06-2026/2026-08-18_red/proc/HD72673_1.1d.fits
