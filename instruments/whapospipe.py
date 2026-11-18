@@ -4,6 +4,16 @@
 # whapospipe V3 Date: 2026-09-28  Cleaned. Choosing the closest in time ThAr file
 # whapospipe V4 Date: 2026-10-09  with wavcals with official order numbers
 # whapospipe V5 Date: 2026-10-09  Further developments
+"""Run the Whapos CCD reduction and radial-velocity analysis pipeline.
+
+The script classifies raw frames, builds or reuses calibration products,
+extracts and wavelength-calibrates spectra, then reduces selected science
+frames and writes per-frame products plus a nightly results table. Its CLI
+and reduction workflow execute at module scope, so run it as a command rather
+than importing it as a library module.
+"""
+
+# Runtime and project dependencies
 import sys
 import matplotlib
 matplotlib.use('Agg')
@@ -12,7 +22,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import traceback
 
-# ceres modules
+# Resolve project data paths and import CERES modules.
 import os
 _pkg_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _data_dir = os.path.join(_pkg_dir, 'instruments', 'data')
@@ -26,7 +36,7 @@ from ceres3.utils import correlation
 from ceres3.ext import Marsh
 from ceres3.utils import globalutils as GLOBALutils
 
-# other useful modules
+# Import CLI, FITS, time, numerical, and modeling dependencies.
 import argparse
 import ephem
 import glob
@@ -44,7 +54,7 @@ import statsmodels.api as sm
 
 lowess = sm.nonparametric.lowess
 
-# Recive input parameters
+# Parse command-line options and validate the raw-data directory.
 parser = argparse.ArgumentParser()
 parser.add_argument('directorio')
 parser.add_argument('-avoid_plot', action="store_true", default=False)
@@ -75,6 +85,7 @@ if not directory.exists() or not directory.is_dir():
     print(f"\n\tError: the path {dirin} does not exist or is not a valid directory.")
     sys.exit()
 
+# Normalize input/output paths and create the reduction workspace.
 if dirin[-1] != '/':
     dirin = dirin + '/'
 
@@ -90,6 +101,7 @@ os.makedirs(dirout+'proc', exist_ok=True)
 
 f_res = open(dirout+'proc/'+'results.txt','w')
 
+# Use the night-specific reference file unless one was provided explicitly.
 if reffile == 'default':
     reffile = dirin+'reffile.txt'
 
@@ -139,6 +151,7 @@ just_bias      = args.just_bias
 just_flats     = args.just_flats
 just_thar      = args.just_thar
 
+# Classify raw frames and decide whether calibration products must be built.
 if just_bias or just_flats:
     force_pre_process = True
 
@@ -172,6 +185,7 @@ else:
 
 trace_file = dirout+'trace.pkl'
 
+# Build or load the master bias, master flat, and echelle-order trace.
 if (pre_process == 1):
     if just_flats == False: 
 
@@ -229,6 +243,32 @@ if (pre_process == 1):
 
         print("\t\t-> Masterflats: done!")
 
+        # Report detector metadata from the first flat frame.
+        flat_header = pyfits.getheader(flats[0])
+        ccd_size = flat_header.get('CCD-SIZE', flat_header.get('CCDSIZE'))
+
+        if ccd_size is None:
+            ccd_size = f"{flat_header.get('NAXIS1', 'not recorded')} x {flat_header.get('NAXIS2', 'not recorded')} pixels"
+        pixel_size = flat_header.get('PIXEL-SIZE', flat_header.get('PIXSIZE'))
+
+        if pixel_size is None:
+            pixel_x = flat_header.get('XPIXSZ', flat_header.get('XPIXELSZ'))
+            pixel_y = flat_header.get('YPIXSZ', flat_header.get('YPIXELSZ'))
+            pixel_size = f"{pixel_x} x {pixel_y}" if pixel_x is not None and pixel_y is not None else 'not recorded'
+        binning = flat_header.get('BINNING')
+
+        if binning is None:
+            binning_x = flat_header.get('XBINNING')
+            binning_y = flat_header.get('YBINNING')
+            binning = f"{binning_x} x {binning_y}" if binning_x is not None and binning_y is not None else 'not recorded'
+        ccd_temp = flat_header.get('CCD-TEMP', 'not recorded')
+
+        print(f"\t\tCCD size: {ccd_size}")
+        print(f"\t\tPixel size: {pixel_size}")
+        print(f"\t\tBinning: {binning}")
+        print(f"\t\tCCD temperature: {ccd_temp}")
+
+
         print("\t\t-> Tracing orders...")
         c, nord = GLOBALutils.get_them(MasterFlat.T, 4.,trace_degree,maxords=-1,nsigmas=5,mode=1)
         print("\t\t-> Orders found in flat:", nord)
@@ -258,6 +298,7 @@ else:
 if just_bias:
     sys.exit()
 
+# Combine dark frames by exposure time when multiple darks are available.
 if len(darks)>1:
     dtimes = GLOBALutils.get_dark_times(darks,key='EXPTIME')
     for dtime in dtimes:
@@ -276,6 +317,7 @@ S_flat_fits = dirout +'S_flat.fits'
 S_flat_simple_fits = dirout +'S_flat_simple.fits'
 #force_flat_extract=True
 
+# Extract the flat-field profile and cache its extraction products.
 if ( os.access(P_fits,os.F_OK) == False ) or \
     ( os.access(S_flat_fits,os.F_OK) == False ) or \
     ( os.access(S_flat_simple_fits,os.F_OK) == False ) or \
@@ -342,6 +384,7 @@ S_flat_n, S_flat_simple_n = GLOBALutils.FlatNormalize( S_flat[0].data, S_flat_si
 if just_flats:
    sys.exit()
 
+# Extract ThAr frames and determine the detector-order mapping.
 reffiles = []
 
 thar_times = []
@@ -399,6 +442,7 @@ if os.access(dirout+'order_id.pkl', os.F_OK) == False or force_thar_id:
     start = or69 - 9
     end   = start + 48 
     idorder0 = 69 - 9  # Identify the first file to start reading: whapos_60.iwdat. 
+    print("start: ", start, "end: ", end, "idorder0: ", idorder0)
 
     print('\t\tWill start on order', start, 'for comparison fibre and finishes on order', end)
     print('\t\tOffset for comparison fibre is ', offset, 'pixels')
@@ -417,7 +461,7 @@ else:
 
 ntot = end - start +1
 
-# Calibrating all the Thorium-Argon files:
+# Fit and cache a global wavelength solution for each ThAr frame.
 #force_thar_wavcal = True
 for fsim in thars:
     thar_fits_simple = dirout + Path(fsim).stem + '.spec.simple.fits.S'
@@ -660,6 +704,7 @@ drift_file = dirout + '/drifts.txt'
 drift_names_file = dirout + '/drifts_names.txt'
 rednames = []
 
+# Load the reference solution and estimate nightly instrumental drift.
 force_drifts = False
 
 if os.path.isfile(drift_names_file):
@@ -702,7 +747,7 @@ if absref != 'none' and os.path.isfile(absref):
 if just_thar:
     sys.exit()
 
-### start of science frame reductions ###
+# Select science frames and load per-frame moonlight-correction settings.
 justdo = np.array([])
 if os.path.isfile(dirin+'/justdo.txt'):
     justdo = open(dirin+'/justdo.txt').readlines()
@@ -761,6 +806,8 @@ else:
 
 spec_moon = np.array(spec_moon)
 use_moon  = np.array(use_moon)
+
+# Reduce each selected science frame independently.
 for fsim in new_list:
     try:
             print('\n')
@@ -795,7 +842,9 @@ for fsim in new_list:
             except:
                 ra,dec = -999,-999
             ras,decs = ra,dec
+            print("reffile: ", reffile)
             ra2,dec2 = GLOBALutils.getcoords(obname,mjd,filen=reffile)
+            print("ra2: ", ra2, "dec2: ", dec2)
             if ra2 !=0 and dec2 != 0:
                 ra = ra2
                 dec = dec2

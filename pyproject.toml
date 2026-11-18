@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ceres3"
+version = "0.1.0"
+description = "CERES3: Echelle spectrograph data reduction pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "astropy",
+    "scipy",
+    "matplotlib",
+    "pandas",
+    "statsmodels",
+    "ephem",
+    "requests",
+    "astroquery",
+    "PyAstronomy",
+    "emcee",
+    "corner",
+    "scikit-image",
+    "pycurl",
+]
+
+[project.scripts]
+ceres3 = "cli:main"
+
+[tool.setuptools]
+packages = ["ceres3"]
+py-modules = ["cli", "first_call", "postprocess"]

@@ -3660,7 +3660,7 @@ def simbad_coords(obname,mjd):
         elif obname.lower() == 'omicronpup':
                 obname = 'omi pup'
 
-        paths = ['https://simbad.u-strasbg.fr/simbad/sim-script','https://simbad.harvard.edu/simbad/sim-script']
+        paths = ['https://simbad.harvard.edu/simbad/sim-script', 'https://simbad.u-strasbg.fr/simbad/sim-script']
 
         cond = True
         i = 0
