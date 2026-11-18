@@ -7,3 +7,4 @@ instruments/.whapos
 instruments/*.png
 data/whapos_wavcals.org
 data/whapos_wavcals.old
+*.swp
