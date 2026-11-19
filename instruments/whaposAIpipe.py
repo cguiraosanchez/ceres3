@@ -19,7 +19,7 @@ import os
 import pickle
 import sys
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -64,7 +64,7 @@ class PipelineConfig:
 
 @dataclass(frozen=True)
 class InstrumentConfig:
-    """Fixed Whapos detector, extraction, and wavelength-fit parameters."""
+    """Whapos detector and fit parameters; aperture is resolved from the flat."""
 
     gain: float = 1.0
     read_noise: float = 1.5
@@ -159,6 +159,7 @@ class WhaposPipeline:
         bias_path = out / "MasterBias.fits"
         flat_path = out / "MasterFlat.fits"
         trace_path = out / "trace.pkl"
+        flat_rebuilt = False
         preprocess = (self.instrument.force_preprocess or not bias_path.exists()
                       or not flat_path.exists() or not trace_path.exists())
 
@@ -166,8 +167,10 @@ class WhaposPipeline:
             self._make_master_bias(bias_path)
             if not self.config.just_bias:
                 self._make_master_flat(flat_path, trace_path)
+                flat_rebuilt = True
         elif self.config.just_flats:
             self._make_master_flat(flat_path, trace_path)
+            flat_rebuilt = True
 
         if not bias_path.exists():
             raise FileNotFoundError(f"Master bias is missing: {bias_path}")
@@ -186,6 +189,16 @@ class WhaposPipeline:
             with trace_path.open("rb") as stream:
                 trace = pickle.load(stream, encoding="latin1")
             self.trace_coefficients = np.asarray(trace["c"])
+            if not flat_rebuilt:
+                aperture = self._set_aperture_from_flat(
+                    self.master_flat, self.trace_coefficients
+                )
+                self.trace_coefficients, count = whaposAIutils.good_orders(
+                    self.trace_coefficients, len(self.trace_coefficients),
+                    self.master_flat.shape[1], self.master_flat.shape[0], aperture,
+                )
+                if count == 0:
+                    raise RuntimeError("No usable echelle orders found in the master flat")
             self.order_count = len(self.trace_coefficients)
 
         self._make_master_darks()
@@ -233,9 +246,10 @@ class WhaposPipeline:
             master.T, 4.0, self.instrument.trace_degree,
             maxords=-1, nsigmas=5, mode=1,
         )
+        aperture = self._set_aperture_from_flat(master, coefficients)
         coefficients, count = whaposAIutils.good_orders(
             coefficients, len(coefficients), master.shape[1], master.shape[0],
-            self.instrument.aperture,
+            aperture,
         )
         if count == 0:
             raise RuntimeError("No usable echelle orders found in the master flat")
@@ -244,6 +258,78 @@ class WhaposPipeline:
         with trace_path.open("wb") as stream:
             pickle.dump(trace, stream, protocol=pickle.HIGHEST_PROTOCOL)
         print(f"\tMaster flat and trace written: {destination}")
+
+    def _set_aperture_from_flat(
+        self, master_flat: np.ndarray, trace_coefficients: np.ndarray
+    ) -> int:
+        """Set aperture to half the median spatial FWHM measured on the flat."""
+        flat = np.asarray(master_flat, dtype=float)
+        coefficients = np.asarray(trace_coefficients, dtype=float)
+        if flat.ndim != 2 or coefficients.ndim != 2 or len(coefficients) == 0:
+            raise ValueError("master flat and order traces must be non-empty 2-D arrays")
+
+        ncolumns, nrows = flat.shape
+        columns = np.unique(np.linspace(
+            0, ncolumns - 1, min(ncolumns, 64), dtype=int
+        ))
+        centers = np.asarray([
+            np.polyval(coefficient, columns) for coefficient in coefficients
+        ])
+        widths: list[float] = []
+        for column_index, column in enumerate(columns):
+            column_centers = centers[:, column_index]
+            for order_index, center in enumerate(column_centers):
+                other_centers = np.delete(column_centers, order_index)
+                if not other_centers.size or not np.isfinite(center):
+                    continue
+                spacing = float(np.min(np.abs(other_centers - center)))
+                radius = min(12, max(4, int(spacing // 3)))
+                pixel = int(np.rint(center))
+                lo, hi = pixel - radius, pixel + radius
+                if lo < 0 or hi >= nrows:
+                    continue
+
+                profile = flat[column, lo:hi + 1]
+                if not np.all(np.isfinite(profile)):
+                    continue
+                baseline = 0.5 * (np.median(profile[:2]) + np.median(profile[-2:]))
+                peak_index = int(np.argmax(profile))
+                peak = profile[peak_index]
+                if peak <= baseline:
+                    continue
+                half_max = baseline + 0.5 * (peak - baseline)
+
+                left = peak_index
+                while left > 0 and profile[left - 1] >= half_max:
+                    left -= 1
+                right = peak_index
+                while right < len(profile) - 1 and profile[right + 1] >= half_max:
+                    right += 1
+                if left == 0 or right == len(profile) - 1:
+                    continue
+
+                left_denominator = profile[left] - profile[left - 1]
+                right_denominator = profile[right] - profile[right + 1]
+                if left_denominator <= 0 or right_denominator <= 0:
+                    continue
+                left_crossing = left - 1 + (half_max - profile[left - 1]) / left_denominator
+                right_crossing = right + (profile[right] - half_max) / right_denominator
+                width = float(right_crossing - left_crossing)
+                if np.isfinite(width) and width > 0:
+                    widths.append(width)
+
+        if len(widths) < 10:
+            raise RuntimeError(
+                "Could not measure enough order profiles to determine the aperture"
+            )
+        median_fwhm = float(np.median(widths))
+        aperture = max(1, int(np.ceil(median_fwhm / 2.0))) + 1
+        self.instrument = replace(self.instrument, aperture=aperture)
+        print(
+            f"\tEstimated extraction aperture: {aperture} px "
+            f"(median order FWHM {median_fwhm:.1f} px from {len(widths)} profiles)"
+        )
+        return aperture
 
     @staticmethod
     def _print_detector_metadata(flat_path: str) -> None:
