@@ -3,7 +3,7 @@
 This entrypoint preserves the products and numerical routines used by
 ``whapospipe.py`` while separating argument parsing, calibration, wavelength
 solution, and per-science-frame work. Importing the module has no side effects;
-run it with ``python -m ceres3.instruments.whapospipenew``.
+run it with ``python -m ceres3.instruments.whaposAIpipe``.
 
 The extraction, wavelength-fitting, barycentric, lunar, and CCF algorithms are
 kept in CERES' established utility modules. This driver owns orchestration,
@@ -36,7 +36,7 @@ from astropy.io import fits
 from math import radians
 
 from ceres3.ext import Marsh
-from ceres3.instruments import whaposIAutils
+from ceres3.instruments import whaposAIutils
 from ceres3.utils import correlation, globalutils as GLOBALutils, jplephem
 
 LOWESS = sm.nonparametric.lowess
@@ -107,7 +107,7 @@ class WhaposPipeline:
         self.gain = self.instrument.gain
         self.read_noise = self.instrument.read_noise
         self.package_root = Path(__file__).resolve().parents[1]
-        self.order_dir = self.package_root / "instruments" / "whapos_wavcals"
+        self.order_dir = self.package_root / "instruments" / "data" / "whapos_wavcals"
         self.model_path = self.package_root / "data" / "COELHO_MODELS" / "R_40000b"
         self.mask_dir = self.package_root / "utils" / "data" / "xc_masks"
         self.reffile = config.reference_file or config.input_dir / "reffile.txt"
@@ -145,7 +145,7 @@ class WhaposPipeline:
         """Classify FITS files once and reject incomplete observing nights."""
         (self.biases, self.darks, self.flats, self.flats_old,
          self.thars, self.thars_old, self.science, self.dark_science) = \
-            whaposIAutils.FileClassify(str(self.config.input_dir) + os.sep, str(self.log_path))
+            whaposAIutils.FileClassify(str(self.config.input_dir) + os.sep, str(self.log_path))
         for label, files in (("biases", self.biases), ("darks", self.darks),
                              ("flats", self.flats), ("ThAr", self.thars),
                              ("science", self.science)):
@@ -198,7 +198,7 @@ class WhaposPipeline:
             master = GLOBALutils.MedianCombine_simple(self.biases, ZF=0.0)
             if len(self.biases) > 1:
                 self.read_noise = float(np.around(
-                    whaposIAutils.compute_RON(master, self.biases, gain=self.gain), 1
+                    whaposAIutils.compute_RON(master, self.biases, gain=self.gain), 1
                 ))
             else:
                 self.read_noise = self.instrument.read_noise
@@ -225,7 +225,7 @@ class WhaposPipeline:
         hdu = fits.PrimaryHDU(master)
         hdu.header["BDATE"] = bias_header["DATE"]
         hdu.header["DATE"] = self._now()
-        hdu = whaposIAutils.fill_list_header(hdu, self.flats)
+        hdu = whaposAIutils.fill_list_header(hdu, self.flats)
         hdu.writeto(destination, overwrite=True)
         self._print_detector_metadata(self.flats[0])
 
@@ -233,7 +233,7 @@ class WhaposPipeline:
             master.T, 4.0, self.instrument.trace_degree,
             maxords=-1, nsigmas=5, mode=1,
         )
-        coefficients, count = whaposIAutils.good_orders(
+        coefficients, count = whaposAIutils.good_orders(
             coefficients, len(coefficients), master.shape[1], master.shape[0],
             self.instrument.aperture,
         )
@@ -332,14 +332,14 @@ class WhaposPipeline:
         mjds = []
         for path in self.thars:
             with fits.open(path, memmap=False) as hdul:
-                mjd, _ = whaposIAutils.mjd_fromheader(hdul)
+                mjd, _ = whaposAIutils.mjd_fromheader(hdul)
                 raw = np.asarray(hdul[0].data, dtype=np.float32) - self.master_bias
             mjds.append(mjd)
             simple_path = self.config.output_dir / f"{Path(path).stem}.spec.simple.fits.S"
             optimal_path = self.config.output_dir / f"{Path(path).stem}.spec.fits.S"
             if self.instrument.force_thar_extract or self.config.just_thar or not simple_path.exists() or not optimal_path.exists():
                 image = np.ascontiguousarray(np.fliplr(raw.T))
-                background = whaposIAutils.get_scat(image.astype(np.float32), self.profile.astype(np.float32), 1)
+                background = whaposAIutils.get_scat(image.astype(np.float32), self.profile.astype(np.float32), 1)
                 image -= background
                 simple = GLOBALutils.simple_extraction(
                     image.T, self.trace_coefficients, self.instrument.aperture,
@@ -408,7 +408,7 @@ class WhaposPipeline:
     def _fit_one_thar(self, path: str, arc_index: int) -> tuple[dict[str, Any], np.ndarray]:
         """Fit per-order line lists, then one robust 2-D wavelength surface."""
         with fits.open(path, memmap=False) as hdul:
-            mjd, _ = whaposIAutils.mjd_fromheader(hdul)
+            mjd, _ = whaposAIutils.mjd_fromheader(hdul)
         extracted_path = self.config.output_dir / f"{Path(path).stem}.spec.fits.S"
         with fits.open(extracted_path, memmap=False) as hdul:
             extracted = np.asarray(hdul[0].data)
@@ -430,8 +430,11 @@ class WhaposPipeline:
             order_text = f"{physical_order:02d}" if physical_order < 10 else str(physical_order)
             raw = lines[row] / scipy.signal.medfilt(self.flat_spectrum[row, 1], 31)
             arc_order = raw - scipy.signal.medfilt(raw, 101)
-            weights = np.ones(arc_order.size)
-            fit = whaposIAutils.Initial_Wav_Calibration(
+            pixel_ivar = np.asarray(inverse_variance[row], dtype=float)
+            weights = np.zeros_like(pixel_ivar)
+            valid_ivar = np.isfinite(pixel_ivar) & (pixel_ivar > 0)
+            weights[valid_ivar] = np.sqrt(pixel_ivar[valid_ivar])
+            fit = whaposAIutils.Initial_Wav_Calibration(
                 str(self.order_dir / f"whapos_{order_text}.iwdat"), arc_order,
                 row, weights, rmsmax=400, minlines=10, FixEnds=False,
                 Dump_Argon=False, Cheby=True,
@@ -540,7 +543,7 @@ class WhaposPipeline:
             all_science = np.asarray([str(path) for path in selected])
         files = []
         for path in all_science:
-            name = whaposIAutils.get_name(path)
+            name = whaposAIutils.get_name(path)
             if self.config.object_to_do == "all" or name == self.config.object_to_do:
                 files.append((str(path), name))
         print("\n\t--> The following targets will be processed:")
@@ -576,7 +579,7 @@ class WhaposPipeline:
         """Correct, extract, calibrate, and analyze a single science exposure."""
         header = fits.getheader(path)
         with fits.open(path, memmap=False) as hdul:
-            mjd, _ = whaposIAutils.mjd_fromheader(hdul)
+            mjd, _ = whaposAIutils.mjd_fromheader(hdul)
             raw = np.asarray(hdul[0].data, dtype=np.float32)
         exposure = float(header["EXPTIME"])
         date_obs = str(header["DATE-OBS"])
@@ -592,7 +595,7 @@ class WhaposPipeline:
         if ra == -999 or dec == -999:
             raise ValueError(f"No usable coordinates for {object_name}")
 
-        airmass = whaposIAutils.get_airmass(ra, dec, latitude, longitude, altitude,
+        airmass = whaposAIutils.get_airmass(ra, dec, latitude, longitude, altitude,
                                           date_obs.replace("T", " "))
         self._set_observer(latitude, longitude, altitude)
         bary_result = jplephem.doppler_fraction(ra / 15.0, dec, int(mjd), mjd % 1, 1, 0.0)
@@ -613,7 +616,7 @@ class WhaposPipeline:
         if background_path.exists():
             background = fits.getdata(background_path)
         else:
-            background = whaposIAutils.get_scat(image, profile, 1)
+            background = whaposAIutils.get_scat(image, profile, 1)
             fits.PrimaryHDU(np.asarray(background, dtype=np.float32)).writeto(background_path)
         image -= background
 
@@ -644,7 +647,7 @@ class WhaposPipeline:
         optimal_spectrum = fits.getdata(optimal_path)
         background_spectrum = fits.getdata(background_spec_path)
 
-        arc_index, seconds = whaposIAutils.find_closest_index(mjd, self.thar_times)
+        arc_index, seconds = whaposAIutils.find_closest_index(mjd, self.thar_times)
         arc_path = str(self.thars[arc_index])
         arc_solution = self.wav_solutions[arc_path]
         reference = self.reference_solution

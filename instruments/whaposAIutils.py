@@ -305,6 +305,8 @@ def Initial_Wav_Calibration(filename, spec, order, wei, porder=3, rmsmax=75,
     weights = np.asarray(wei, dtype=float)
     if spectrum.ndim != 1 or weights.shape != spectrum.shape:
         raise ValueError("spec and wei must be one-dimensional arrays of equal length")
+    if not np.all(np.isfinite(weights)) or np.any(weights < 0):
+        raise ValueError("wei must contain finite, non-negative inverse-standard-deviation weights")
     if binning == 0 or fact == 0 or porder < 0 or minlines < 1:
         raise ValueError("binning, fact, polynomial degree, and minimum line count must be valid")
     records = []
@@ -324,7 +326,7 @@ def Initial_Wav_Calibration(filename, spec, order, wei, porder=3, rmsmax=75,
             if 20 < pixel < len(spectrum) - 20:
                 x = np.arange(int(np.rint(pixel)) - 5, int(np.rint(pixel)) + 6)
                 guess = np.array([pixel - 0.5 * fibre_ap, np.max(spectrum[x]), sigmai])
-                fitted = FitFideosCompProf(x, spectrum[x], guess, fibre_ap)
+                fitted = FitFideosCompProf(x, spectrum[x], guess, fibre_ap, weights[x])
                 records.append((fitted[0], wavelength, fitted[0], fitted[2], fitted[1]))
     if len(records) < max(minlines, porder + 1):
         raise ValueError(f"Only {len(records)} usable lines found; need at least {max(minlines, porder + 1)}")
@@ -530,8 +532,8 @@ def AnaliticProfile1D(p, x, R=2.3):
     return profile.reshape(len(x), _SUBPIXEL_FACTOR).mean(axis=1)
 
 
-def FitFideosCompProf(X, Y, p0, fibre_ap):
-    """Fit center, peak amplitude, and blur width of a 1-D fibre profile."""
+def FitFideosCompProf(X, Y, p0, fibre_ap, weights=None):
+    """Fit a 1-D fibre profile, optionally weighting samples by inverse noise."""
     x, y, initial = np.asarray(X, float), np.asarray(Y, float), np.asarray(p0, float)
     if x.ndim != 1 or y.shape != x.shape or initial.size != 3:
         raise ValueError("X/Y must match and p0 must contain center, amplitude, width")
@@ -539,8 +541,18 @@ def FitFideosCompProf(X, Y, p0, fibre_ap):
         raise ValueError("fibre_ap must be positive")
     if initial[2] <= 0:
         raise ValueError("initial profile width must be positive")
+    if weights is None:
+        fit_weights = np.ones_like(y)
+    else:
+        fit_weights = np.asarray(weights, dtype=float)
+        if fit_weights.shape != y.shape:
+            raise ValueError("weights must have the same shape as Y")
+        if not np.all(np.isfinite(fit_weights)) or np.any(fit_weights < 0):
+            raise ValueError("weights must be finite and non-negative")
+        if np.count_nonzero(fit_weights) < 3:
+            raise ValueError("at least three samples must have positive weights")
     fitted = optimize.least_squares(
-        lambda p: AnaliticProfile1D(p, x, fibre_ap) - y,
+        lambda p: (AnaliticProfile1D(p, x, fibre_ap) - y) * fit_weights,
         initial,
         bounds=([-np.inf, -np.inf, np.finfo(float).eps],
                 [np.inf, np.inf, np.inf]),
