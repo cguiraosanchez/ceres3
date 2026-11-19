@@ -499,11 +499,13 @@ class WhaposPipeline:
         with fits.open(extracted_path, memmap=False) as hdul:
             extracted = np.asarray(hdul[0].data)
         lines = extracted[:, 1, :]
-        inverse_variance = extracted[:, 2, :]
+        flux_variance = extracted[:, 2, :]
         pixels: list[np.ndarray] = []
         wavelengths: list[np.ndarray] = []
         orders: list[np.ndarray] = []
         centroids: list[np.ndarray] = []
+        centroid_uncertainties: list[np.ndarray] = []
+        wavelength_uncertainties: list[np.ndarray] = []
         sigmas: list[np.ndarray] = []
         intensities: list[np.ndarray] = []
         global_zero = None
@@ -514,29 +516,45 @@ class WhaposPipeline:
             range(self.first_physical_order, self.first_physical_order + self.ntotal),
         ):
             order_text = f"{physical_order:02d}" if physical_order < 10 else str(physical_order)
-            raw = lines[row] / scipy.signal.medfilt(self.flat_spectrum[row, 1], 31)
+            normalization = scipy.signal.medfilt(self.flat_spectrum[row, 1], 31)
+            raw = lines[row] / normalization
             arc_order = raw - scipy.signal.medfilt(raw, 101)
-            pixel_ivar = np.asarray(inverse_variance[row], dtype=float)
-            weights = np.zeros_like(pixel_ivar)
-            valid_ivar = np.isfinite(pixel_ivar) & (pixel_ivar > 0)
-            weights[valid_ivar] = np.sqrt(pixel_ivar[valid_ivar])
+            pixel_variance = np.asarray(flux_variance[row], dtype=float)
+            weights = np.zeros_like(pixel_variance)
+            valid_variance = (np.isfinite(pixel_variance) & (pixel_variance > 0)
+                              & np.isfinite(normalization) & (normalization > 0))
+            weights[valid_variance] = (
+                normalization[valid_variance] / np.sqrt(pixel_variance[valid_variance])
+            )
             fit = whaposAIutils.Initial_Wav_Calibration(
                 str(self.order_dir / f"whapos_{order_text}.iwdat"), arc_order,
                 row, weights, rmsmax=400, minlines=10, FixEnds=False,
                 Dump_Argon=False, Cheby=True,
                 porder=self.instrument.wavelength_degree_x,
                 rough_shift=self.offset, do_xc=False, line_width=6,
-                pixelization=True,
+                pixelization=True, return_centroid_uncertainty=True,
             )
-            coeff_wav, _, pix, wav, _, _, line_centers, line_sigmas, line_intensity = fit
+            (coeff_wav, _, pix, wav, _, _, line_centers, line_sigmas,
+             line_intensity, line_centroid_uncertainties) = fit
             if physical_order == 74:
                 global_zero = GLOBALutils.Cheby_eval(coeff_wav, 0.5 * (len(arc_order) - 1), len(arc_order))
-            pixels.append(pix)
-            wavelengths.append(wav)
-            orders.append(np.full(pix.size, physical_order))
-            centroids.append(line_centers)
-            sigmas.append(line_sigmas)
-            intensities.append(line_intensity)
+            wavelength_derivative = (
+                GLOBALutils.Cheby_eval(coeff_wav, pix + 0.5, len(arc_order))
+                - GLOBALutils.Cheby_eval(coeff_wav, pix - 0.5, len(arc_order))
+            )
+            line_wavelength_uncertainties = (
+                np.abs(wavelength_derivative) * line_centroid_uncertainties
+            )
+            valid_lines = (np.isfinite(line_wavelength_uncertainties)
+                           & (line_wavelength_uncertainties > 0))
+            pixels.append(pix[valid_lines])
+            wavelengths.append(wav[valid_lines])
+            orders.append(np.full(np.count_nonzero(valid_lines), physical_order))
+            centroids.append(line_centers[valid_lines])
+            centroid_uncertainties.append(line_centroid_uncertainties[valid_lines])
+            wavelength_uncertainties.append(line_wavelength_uncertainties[valid_lines])
+            sigmas.append(line_sigmas[valid_lines])
+            intensities.append(line_intensity[valid_lines])
             last_order = arc_order
 
         if global_zero is None or last_order is None:
@@ -545,8 +563,12 @@ class WhaposPipeline:
         all_wavelengths = np.concatenate(wavelengths)
         all_orders = np.concatenate(orders)
         all_centroids = np.concatenate(centroids)
+        all_centroid_uncertainties = np.concatenate(centroid_uncertainties)
+        all_wavelength_uncertainties = np.concatenate(wavelength_uncertainties)
         all_sigmas = np.concatenate(sigmas)
         all_intensities = np.concatenate(intensities)
+        global_weights = 1.0 / all_wavelength_uncertainties
+        global_weights /= np.median(global_weights)
         initial = np.zeros((min(self.instrument.wavelength_degree_x,
                                 self.instrument.wavelength_degree_order) + 1)
                            * (2 * max(self.instrument.wavelength_degree_x,
@@ -555,7 +577,7 @@ class WhaposPipeline:
                                     self.instrument.wavelength_degree_order) + 2) // 2)
         initial[0] = 74 * global_zero
         fit = GLOBALutils.Fit_Global_Wav_Solution(
-            all_pixels, all_wavelengths, all_orders, np.ones(all_intensities.shape),
+            all_pixels, all_wavelengths, all_orders, global_weights,
             initial, Cheby=True, maxrms=self.instrument.max_wavelength_rms,
             Inv=self.instrument.inverse_order,
             minlines=self.instrument.min_global_lines,
@@ -585,6 +607,8 @@ class WhaposPipeline:
             "G_wav": gwav, "II": accepted, "rms_ms": rms,
             "G_res": residuals, "All_Centroids": all_centroids,
             "All_Orders": all_orders, "All_Sigmas": all_sigmas,
+            "All_Centroid_Uncertainties": all_centroid_uncertainties,
+            "All_Wavelength_Uncertainties": all_wavelength_uncertainties,
             "All_Pixel_Centers": all_pixels, "All_Wavelengths": all_wavelengths,
             "thar_order": last_order, "All_Intensities": all_intensities,
         }
@@ -1075,7 +1099,7 @@ class WhaposPipeline:
         activity_path = product.with_name(product.name.replace(".sp.fits", ".1d.fits"))
         try:
             from ceres3.utils.activity import compute_activity
-            compute_activity(spec, instrument="fideos", output_1d_path=str(activity_path),
+            compute_activity(spec, instrument="whapos", output_1d_path=str(activity_path),
                              teff=teff if teff != -999 else None)
         except Exception as error:
             print(f"\tActivity products unavailable: {error}")

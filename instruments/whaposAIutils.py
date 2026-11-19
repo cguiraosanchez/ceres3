@@ -293,13 +293,14 @@ def Initial_Wav_Calibration(filename, spec, order, wei, porder=3, rmsmax=75,
                             Dump_AllLines=False, Cheby=False, rough_shift=0.0,
                             del_width=5.0, binning=1, line_width=4, fact=1,
                             do_xc=True, sigmai=0.7, pixelization=False,
-                            fibre_ap=2.3):
+                            fibre_ap=2.3, return_centroid_uncertainty=False):
     """Fit line-list wavelengths to measured ThAr line centers for one order.
 
     Returns the legacy nine-tuple of wavelength/width coefficients, accepted
     pixel and wavelength vectors, fit RMS/residuals, centroids, widths, and
-    line strengths. Outlying lines are removed iteratively while preserving
-    the requested minimum number of calibration lines.
+    line strengths. When requested, a tenth vector contains the fitted
+    centroid standard errors. Outlying lines are removed iteratively while
+    preserving the requested minimum number of calibration lines.
     """
     spectrum = np.asarray(spec, dtype=float)
     weights = np.asarray(wei, dtype=float)
@@ -326,8 +327,21 @@ def Initial_Wav_Calibration(filename, spec, order, wei, porder=3, rmsmax=75,
             if 20 < pixel < len(spectrum) - 20:
                 x = np.arange(int(np.rint(pixel)) - 5, int(np.rint(pixel)) + 6)
                 guess = np.array([pixel - 0.5 * fibre_ap, np.max(spectrum[x]), sigmai])
-                fitted = FitFideosCompProf(x, spectrum[x], guess, fibre_ap, weights[x])
-                records.append((fitted[0], wavelength, fitted[0], fitted[2], fitted[1]))
+                fitted = FitCompProf(
+                    x, spectrum[x], guess, fibre_ap, weights[x],
+                    return_centroid_uncertainty=return_centroid_uncertainty,
+                )
+                if return_centroid_uncertainty:
+                    parameters, centroid_uncertainty = fitted
+                    if not np.isfinite(centroid_uncertainty) or centroid_uncertainty <= 0:
+                        continue
+                else:
+                    parameters = fitted
+                record = (parameters[0], wavelength, parameters[0],
+                          parameters[2], parameters[1])
+                if return_centroid_uncertainty:
+                    record += (centroid_uncertainty,)
+                records.append(record)
     if len(records) < max(minlines, porder + 1):
         raise ValueError(f"Only {len(records)} usable lines found; need at least {max(minlines, porder + 1)}")
     data = np.asarray(records, dtype=float)
@@ -353,8 +367,11 @@ def Initial_Wav_Calibration(filename, spec, order, wei, porder=3, rmsmax=75,
             break
         worst = int(np.argmax(np.abs(residuals)))
         accepted = np.delete(accepted, worst)
-    return (coeff_wavelength, coeff_sigma, pixels[accepted], wavelengths[accepted],
-            rms, residuals, centroids[accepted], sigmas[accepted], intensities[accepted])
+    result = (coeff_wavelength, coeff_sigma, pixels[accepted], wavelengths[accepted],
+              rms, residuals, centroids[accepted], sigmas[accepted], intensities[accepted])
+    if return_centroid_uncertainty:
+        return (*result, data[accepted, 5])
+    return result
 
 
 def rms_ms(coeffs_pix2wav, pixel_centers, wavelengths, npix, Cheby=False):
@@ -532,8 +549,9 @@ def AnaliticProfile1D(p, x, R=2.3):
     return profile.reshape(len(x), _SUBPIXEL_FACTOR).mean(axis=1)
 
 
-def FitFideosCompProf(X, Y, p0, fibre_ap, weights=None):
-    """Fit a 1-D fibre profile, optionally weighting samples by inverse noise."""
+def FitCompProf(X, Y, p0, fibre_ap, weights=None,
+                return_centroid_uncertainty=False):
+    """Fit a 1-D fibre profile, optionally returning the center's standard error."""
     x, y, initial = np.asarray(X, float), np.asarray(Y, float), np.asarray(p0, float)
     if x.ndim != 1 or y.shape != x.shape or initial.size != 3:
         raise ValueError("X/Y must match and p0 must contain center, amplitude, width")
@@ -557,10 +575,19 @@ def FitFideosCompProf(X, Y, p0, fibre_ap, weights=None):
         bounds=([-np.inf, -np.inf, np.finfo(float).eps],
                 [np.inf, np.inf, np.inf]),
     )
+    if return_centroid_uncertainty:
+        if np.linalg.matrix_rank(fitted.jac) < len(initial):
+            return fitted.x, np.inf
+        information = fitted.jac.T @ fitted.jac
+        covariance = np.linalg.pinv(information, hermitian=True)
+        variance = float(covariance[0, 0])
+        if not np.isfinite(variance) or variance <= 0:
+            return fitted.x, np.inf
+        return fitted.x, float(np.sqrt(variance))
     return fitted.x
 
 
-def FideosCompProf(p, X, Y):
+def CompProf(p, X, Y):
     """Render an oversampled, pixel-integrated half-fibre image profile."""
     parameters = np.asarray(p, dtype=float)
     x, y = np.asarray(X, dtype=float), np.asarray(Y, dtype=float)
@@ -588,7 +615,7 @@ def FideosCompProf(p, X, Y):
     return output
 
 
-def FitFideos2DProf(X, Y, F, x1, y1):
+def Fit2DProf(X, Y, F, x1, y1):
     """Fit center and amplitude to a 2-D fibre patch without plotting side effects."""
     x, y, image = np.asarray(X), np.asarray(Y), _image2d(F, "F")
     if image.shape != (len(x), len(y)):
@@ -597,7 +624,7 @@ def FitFideos2DProf(X, Y, F, x1, y1):
 
     def model(parameters):
         full = np.array([parameters[0], parameters[1], parameters[2], 2.0, 5.0])
-        return FideosCompProf(full, x, y)
+        return CompProf(full, x, y)
 
     result = optimize.least_squares(lambda p: (model(p) - image).ravel(), initial)
     return result.x
@@ -608,7 +635,7 @@ def lnlike(theta, X, Y, F, Ferr):
     data, error = _image2d(F, "F"), _image2d(Ferr, "Ferr")
     if data.shape != error.shape or np.any(error <= 0):
         return -np.inf
-    model = FideosCompProf(theta, X, Y)
+    model = CompProf(theta, X, Y)
     if model.shape != data.shape:
         return -np.inf
     inv_variance = 1.0 / error ** 2
